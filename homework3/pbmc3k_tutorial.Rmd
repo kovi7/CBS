@@ -481,11 +481,21 @@ For example, Zheng et al. 2017
 >  To identify subpopulations within the myeloid population, we further applied k-means clustering on the first 50 PCs of cluster 9 cells
 
 ```{r}
+library(cluster)
 pc_scores <- Embeddings(pbmc, "pca")[, 1:50]
 
 pbmc$hierarchical_cluster <- as.character(pbmc$kmeans10) 
 num_main_clusters <- length(levels(pbmc$kmeans10))
 subcluster_plots <- list() 
+
+find_optimal_k <- function(data) {
+  silhouette_width <- sapply(2:5, function(k) {
+  km <- kmeans(data, k, nstart = 25)
+  ss <- silhouette(km$cluster, dist(data))
+  mean(ss[,3])
+  })
+  which.max(silhouette_width) + 1
+}
 
 for (i in levels(pbmc$kmeans10)) {
   cluster_label <- paste("Cluster", i)
@@ -511,7 +521,7 @@ for (i in levels(pbmc$kmeans10)) {
   print(p)
   subcluster_plots[[cluster_label]] <- p
 }
-pdf("Kowalska_problem2.pdf")
+
 pbmc$hierarchical_cluster <- factor(pbmc$hierarchical_cluster)
 
 overall_plot <- DimPlot(pbmc,
@@ -523,17 +533,18 @@ overall_plot <- DimPlot(pbmc,
                         pt.size = 0.5) +
   NoLegend() +  ggtitle("Overall visualization")
 
-print(overall_plot)
 
-plot_order <- paste("Cluster", levels(pbmc$kmeans10))
-arranged_plots <- wrap_plots(subcluster_plots[plot_order], ncol = 4)
-
+pdf("Kowalska_problem2.pdf", width = 12, height = 8)
 
 print(overall_plot)
-print(arranged_plots + plot_layout(guides = "collect"))
+
+for(cluster_name in sort(names(subcluster_plots))) {
+  print(subcluster_plots[[cluster_name]])
+}
+
 dev.off()
-```
 
+```
 
 <details>
   <summary>**Session Info**</summary>
